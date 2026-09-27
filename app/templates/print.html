@@ -4,7 +4,7 @@
 <a href="{{ url_for('trip_detail', trip_id=trip.id) }}">← しおりに戻る</a>
 <section class="detail-sheet">
   <p class="eyebrow">{{ trip.destination }} · 印刷用のしおり</p>
-  {{ heading_html | safe }}
+  <h1>{{ heading }}</h1>
   <p class="trip-body">{{ trip.body }}</p>
   {% for day in steps | groupby('day') %}
   <h2>{{ day.grouper }}日目</h2>
