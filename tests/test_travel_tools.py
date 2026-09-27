@@ -15,6 +15,14 @@ def test_print_default_heading(client):
     assert "公開の散歩プラン" in response.get_data(as_text=True)
 
 
+def test_print_heading_escapes_html(client):
+    response = client.get("/trips/1/print", query_string={"heading": "<script>alert('x')</script>"})
+    assert response.status_code == 200
+    html = response.get_data(as_text=True)
+    assert "<script>" not in html
+    assert "&lt;script&gt;alert(&#39;x&#39;)&lt;/script&gt;" in html
+
+
 @pytest.mark.parametrize("user_id,trip_id,status", [(0, 5, 404), (0, 6, 404), (2, 5, 200), (2, 6, 404), (1, 6, 200)])
 def test_print_respects_trip_visibility(client, login, user_id, trip_id, status):
     login(user_id)
@@ -33,3 +41,14 @@ def test_download_guide_from_fixture(app, client, tmp_path):
     assert response.mimetype == "text/plain"
     assert response.headers["Content-Disposition"].startswith("attachment;")
     assert client.get("/travel-guides/download?name=missing.txt").status_code == 404
+
+
+def test_download_guide_rejects_path_traversal(app, client, tmp_path):
+    guides = tmp_path / "guides"
+    guides.mkdir()
+    (guides / "packing-list.txt").write_text("テスト用の持ち物一覧", encoding="utf-8")
+    outside = tmp_path / "outside.txt"
+    outside.write_text("secret", encoding="utf-8")
+    app.config["TRAVEL_GUIDE_DIR"] = str(guides)
+    response = client.get("/travel-guides/download", query_string={"name": "../outside.txt"})
+    assert response.status_code == 404
